@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { askQuestion } from "../controllers/chat.controller.js";
+import { askQuestion, getChatHistory } from "../controllers/chat.controller.js";
 import { rateLimit } from "../middlewares/rateLimit.middleware.js";
 
 const router = Router();
@@ -11,6 +11,11 @@ router.post("/ask",
         keyPrefix: "rate-limit:chat",
     }),
     askQuestion
+);
+
+router.get(
+    "/:documentId",
+    getChatHistory
 );
 
 export default router;

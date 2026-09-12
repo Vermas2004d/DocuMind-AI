@@ -58,3 +58,4 @@ export const processPdfBuffer = async ({
     await fs.unlink(tempFilePath).catch(() => {});
   }
 };
+
