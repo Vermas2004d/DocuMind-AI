@@ -66,3 +66,33 @@ export const uploadDocument = async (req, res) => {
     });
   }
 };
+
+
+export const getUserDocuments = async (req, res) => {
+  try {
+    const userId = req.headers["x-user-id"];
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "x-user-id header is required for now",
+      });
+    }
+
+    const documents = await Document.find({
+      userId,
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      documents,
+    });
+  } catch (error) {
+    console.error("Get documents error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch documents",
+    });
+  }
+};

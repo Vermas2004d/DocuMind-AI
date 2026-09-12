@@ -1,38 +1,70 @@
-import { GoogleLogin } from "@react-oauth/google";
-import axios from "axios";
+import { useState } from "react";
+import { useDocuments } from "./hooks/useDocuments.js";
+import DocumentUpload from "./components/DocumentUpload.jsx";
+import Chat from "./components/Chat.jsx";
 
 function App() {
-  const handleSuccess = async (credentialResponse) => {
-    try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/google`,
-        {
-          credential: credentialResponse.credential,
-        }
-      );
+  const [selectedDocumentId, setSelectedDocumentId] = useState(null);
 
-      console.log("Backend response:", response.data);
-    } catch (error) {
-      console.error(
-        "Login failed:",
-        error.response?.data || error.message
-      );
-    }
-  };
-
-  const handleError = () => {
-    console.log("Google login failed");
-  };
+  const {
+    data: documents = [],
+    isLoading,
+    isError,
+  } = useDocuments();
 
   return (
     <div>
       <h1>DocuMind AI</h1>
+
       <p>Intelligent Document Q&A with RAG</p>
 
-      <GoogleLogin
-        onSuccess={handleSuccess}
-        onError={handleError}
-      />
+      <DocumentUpload />
+
+      <hr />
+
+      <h2>Your Documents</h2>
+
+      {isLoading && <p>Loading documents...</p>}
+
+      {isError && (
+        <p>Failed to load documents.</p>
+      )}
+
+      {!isLoading && documents.length === 0 && (
+        <p>No documents uploaded yet.</p>
+      )}
+
+      {documents.map((document) => (
+        <div key={document._id}>
+          <h3>{document.fileName}</h3>
+
+          <p>
+            Status: <strong>{document.status}</strong>
+          </p>
+
+          <p>
+            Size:{" "}
+            {(document.fileSize / 1024 / 1024).toFixed(2)} MB
+          </p>
+
+          <button
+            disabled={document.status !== "ready"}
+            onClick={() => {
+              setSelectedDocumentId(document._id);
+            }}
+          >
+            {document.status === "ready"
+              ? "Ask Questions"
+              : "Processing..."}
+          </button>
+        </div>
+      ))}
+
+      <hr />
+
+      {selectedDocumentId && (
+        <Chat documentId={selectedDocumentId} />
+      )}
     </div>
   );
 }

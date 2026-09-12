@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 
-import { uploadDocument } from "../controllers/document.controller.js";
+import { uploadDocument , getUserDocuments} from "../controllers/document.controller.js";
 
 const router = Router();
 
@@ -20,6 +20,7 @@ const upload = multer({
 });
 
 router.post("/upload", upload.single("file"), uploadDocument);
+router.get("/", getUserDocuments)
 
 export default router;
 

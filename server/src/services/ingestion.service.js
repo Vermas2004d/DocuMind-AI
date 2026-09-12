@@ -10,11 +10,8 @@ export const processPdfBuffer = async ({
   userId,
   fileName,
 }) => {
-  const tempFilePath = path.join(
-    os.tmpdir(),
-    `documind-${Date.now()}.pdf`
-  );
-                                     
+  const tempFilePath = path.join(os.tmpdir(), `documind-${Date.now()}.pdf`);
+
   try {
     // 1. Write PDF temporarily
     await fs.writeFile(tempFilePath, buffer);
@@ -38,13 +35,20 @@ export const processPdfBuffer = async ({
 
     // 4. Add application metadata to every chunk
     const enrichedChunks = chunks.map((chunk) => {
+      const pageNumber =
+        chunk.metadata?.loc?.pageNumber ??
+        chunk.metadata?.pageNumber ??
+        chunk.metadata?.page;
+
       chunk.metadata = {
         ...chunk.metadata,
         documentId: documentId.toString(),
         userId: userId.toString(),
         fileName,
+        page: pageNumber,
       };
 
+      
       return chunk;
     });
 
@@ -54,4 +58,3 @@ export const processPdfBuffer = async ({
     await fs.unlink(tempFilePath).catch(() => {});
   }
 };
-
