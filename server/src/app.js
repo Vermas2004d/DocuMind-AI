@@ -7,6 +7,7 @@ import connectDB from "./config/db.js";
 import healthRoutes from "./routes/health.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import documentRoutes from "./routes/document.routes.js";
+import chatRoutes from "./routes/chat.routes.js"
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ connectDB();
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/chat", chatRoutes)
 
 const PORT = process.env.PORT || 5000;
 
