@@ -14,7 +14,7 @@ export const processPdfBuffer = async ({
     os.tmpdir(),
     `documind-${Date.now()}.pdf`
   );
-
+                                     
   try {
     // 1. Write PDF temporarily
     await fs.writeFile(tempFilePath, buffer);
@@ -54,3 +54,4 @@ export const processPdfBuffer = async ({
     await fs.unlink(tempFilePath).catch(() => {});
   }
 };
+
