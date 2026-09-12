@@ -1,10 +1,13 @@
 import { randomUUID } from "crypto";
 
 import Document from "../models/Document.js";
+
 import { uploadToS3 } from "../services/s3.service.js";
+import { ingestDocument } from "../services/document-ingestion.service.js";
 
 export const uploadDocument = async (req, res) => {
   try {
+    // 1. Check if file exists
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -24,16 +27,17 @@ export const uploadDocument = async (req, res) => {
 
     const file = req.file;
 
+    // 2. Generate unique S3 key
     const key = `documents/${userId}/${randomUUID()}-${file.originalname}`;
 
-    // Upload file to S3
+    // 3. Upload PDF to S3
     const s3File = await uploadToS3({
       buffer: file.buffer,
       key,
       contentType: file.mimetype,
     });
 
-    // Save document metadata in MongoDB
+    // 4. Save document metadata in MongoDB
     const document = await Document.create({
       userId,
       fileName: file.originalname,
@@ -44,9 +48,13 @@ export const uploadDocument = async (req, res) => {
       status: "uploaded",
     });
 
+    // 5. Process PDF → chunks → embeddings → Qdrant
+    await ingestDocument(document);
+
+    // 6. Return successful response
     return res.status(201).json({
       success: true,
-      message: "Document uploaded successfully",
+      message: "Document uploaded and processed successfully",
       document,
     });
   } catch (error) {
@@ -54,8 +62,7 @@ export const uploadDocument = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to upload document",
+      message: "Failed to upload and process document",
     });
   }
 };
-
