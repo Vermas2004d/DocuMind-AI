@@ -33,8 +33,9 @@ function App() {
 
   const handleGoogleLogin = async (credentialResponse) => {
     try {
+      const apiUrl = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/auth/google`,
+        `${apiUrl}/auth/google`,
         {
           credential: credentialResponse.credential,
         }

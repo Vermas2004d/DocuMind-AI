@@ -13,11 +13,15 @@ import { createPayloadIndexes } from "./services/qdrant.service.js";
 
 const app = express();
 
+const clientUrl = process.env.CLIENT_URL?.trim().replace(/\/+$/, "");
+
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      process.env.CLIENT_URL,
+      clientUrl,
+      clientUrl && !clientUrl.startsWith("http") ? `https://${clientUrl}` : null,
+      clientUrl && clientUrl.startsWith("https://") ? clientUrl.replace(/^https:\/\//, "") : null,
     ].filter(Boolean),
   })
 );
