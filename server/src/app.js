@@ -13,16 +13,36 @@ import { createPayloadIndexes } from "./services/qdrant.service.js";
 
 const app = express();
 
-const clientUrl = process.env.CLIENT_URL?.trim().replace(/\/+$/, "");
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://documind-ai-two-bay.vercel.app",
+  process.env.CLIENT_URL?.trim().replace(/\/+$/, ""),
+].filter(Boolean);
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      clientUrl,
-      clientUrl && !clientUrl.startsWith("http") ? `https://${clientUrl}` : null,
-      clientUrl && clientUrl.startsWith("https://") ? clientUrl.replace(/^https:\/\//, "") : null,
-    ].filter(Boolean),
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      const isAllowed =
+        allowedOrigins.some(
+          (allowed) =>
+            origin === allowed ||
+            origin.replace(/\/+$/, "") === allowed.replace(/\/+$/, "") ||
+            origin === `https://${allowed.replace(/^https?:\/\//, "")}`
+        ) ||
+        origin.endsWith(".vercel.app") ||
+        origin.includes("vercel.app");
+
+      if (isAllowed) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-user-id"],
   })
 );
 app.use(helmet());
