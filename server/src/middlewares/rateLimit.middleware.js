@@ -7,14 +7,7 @@ export const rateLimit = ({
 }) => {
   return async (req, res, next) => {
     try {
-      const userId = req.headers["x-user-id"];
-
-      if (!userId) {
-        return res.status(400).json({
-          success: false,
-          message: "x-user-id header is required",
-        });
-      }
+      const userId = req.user.userId;
 
       const key = `${keyPrefix}:${userId}`;
 

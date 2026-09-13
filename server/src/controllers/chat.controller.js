@@ -12,14 +12,7 @@ export const askQuestion = async (req, res) => {
       });
     }
 
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "x-user-id header is required for now",
-      });
-    }
+    const userId = req.user.userId;
 
     // 1. Ask RAG pipeline
     const result = await askDocument({
@@ -78,14 +71,7 @@ export const getChatHistory = async (req, res) => {
   try {
     const { documentId } = req.params;
 
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "x-user-id header is required for now",
-      });
-    }
+    const userId = req.user.userId;
 
     const chat = await Chat.findOne({
       userId,

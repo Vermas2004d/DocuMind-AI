@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { OAuth2Client } from "google-auth-library";
 import jwt from "jsonwebtoken";
 
@@ -9,7 +10,10 @@ const googleClient = new OAuth2Client(
 
 export const googleLogin = async (req, res) => {
   try {
+    console.log("Google auth request received");
     const { credential } = req.body;
+
+    console.log("Credential received:", Boolean(credential));
 
     if (!credential) {
       return res.status(400).json({
@@ -24,6 +28,8 @@ export const googleLogin = async (req, res) => {
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
+    console.log("Google token verified");
+
     const payload = ticket.getPayload();
 
     const googleId = payload.sub;
@@ -31,8 +37,10 @@ export const googleLogin = async (req, res) => {
     const name = payload.name;
     const profilePicture = payload.picture;
 
-    // Find existing user
-    let user = await User.findOne({ googleId });
+    // Find existing user by googleId or email
+    let user = await User.findOne({
+      $or: [{ googleId }, { email }],
+    });
 
     // Create user if doesn't exist
     if (!user) {
@@ -42,7 +50,22 @@ export const googleLogin = async (req, res) => {
         email,
         profilePicture,
       });
+    } else {
+      let updated = false;
+      if (!user.googleId) {
+        user.googleId = googleId;
+        updated = true;
+      }
+      if (!user.profilePicture && profilePicture) {
+        user.profilePicture = profilePicture;
+        updated = true;
+      }
+      if (updated) {
+        await user.save();
+      }
     }
+
+    console.log("User found/created:", user._id.toString());
 
     // Create our application's JWT
     const token = jwt.sign(
@@ -55,23 +78,22 @@ export const googleLogin = async (req, res) => {
       }
     );
 
-    // return res.status(200).json({
-    //   success: true,
-    //   message: "Google login successful",
-    //   token,
-    //   user: {
-    //     id: user._id,
-    //     name: user.name,
-    //     email: user.email,
-    //     profilePicture: user.profilePicture,
-    //   },
-    // });
+    console.log("JWT generated:", Boolean(token));
+    console.log("Sending auth response");
 
-    return res.redirect(
-  `http://localhost:5173/auth/callback?token=${token}`
-);
+    return res.status(200).json({
+      success: true,
+      message: "Google login successful",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+      },
+    });
   } catch (error) {
-    console.error("Google login error:", error);
+    console.error("Google login error:", error.message || error);
 
     return res.status(401).json({
       success: false,

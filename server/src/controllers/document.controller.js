@@ -1,7 +1,6 @@
+
 import { randomUUID } from "crypto";
-
 import Document from "../models/Document.js";
-
 import { uploadToS3 } from "../services/s3.service.js";
 import { ingestDocument } from "../services/document-ingestion.service.js";
 
@@ -15,16 +14,8 @@ export const uploadDocument = async (req, res) => {
       });
     }
 
-    // Temporary user ID until Google authentication is connected
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "x-user-id header is required for now",
-      });
-    }
-
+    // Get authenticated user ID from JWT
+    const userId = req.user.userId;
     const file = req.file;
 
     // 2. Generate unique S3 key
@@ -67,17 +58,9 @@ export const uploadDocument = async (req, res) => {
   }
 };
 
-
 export const getUserDocuments = async (req, res) => {
   try {
-    const userId = req.headers["x-user-id"];
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "x-user-id header is required for now",
-      });
-    }
+    const userId = req.user.userId;
 
     const documents = await Document.find({
       userId,
@@ -96,3 +79,4 @@ export const getUserDocuments = async (req, res) => {
     });
   }
 };
+
