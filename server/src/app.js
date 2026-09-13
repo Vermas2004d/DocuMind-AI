@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.routes.js";
 import documentRoutes from "./routes/document.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import { connectRedis } from "./config/redis.js";
+import { createPayloadIndexes } from "./services/qdrant.service.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
 
 connectDB();
 connectRedis();
+createPayloadIndexes();
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import axios from "axios";
 import { GoogleLogin } from "@react-oauth/google";
@@ -10,9 +9,11 @@ import Chat from "./components/Chat.jsx";
 
 function App() {
   const [selectedDocumentId, setSelectedDocumentId] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => Boolean(localStorage.getItem("token"))
+
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    Boolean(localStorage.getItem("token"))
   );
+
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem("user");
@@ -32,9 +33,6 @@ function App() {
 
   const handleGoogleLogin = async (credentialResponse) => {
     try {
-      console.log("Google credential received:", Boolean(credentialResponse?.credential));
-      console.log("Calling backend auth");
-
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/auth/google`,
         {
@@ -42,25 +40,20 @@ function App() {
         }
       );
 
-      console.log("Auth response received:", response.status);
-      console.log("Auth success:", response.data?.success);
-      console.log("JWT received:", Boolean(response.data?.token));
-
       const { token, user: userData } = response.data;
 
-      if (token) {
-        // Store JWT
-        localStorage.setItem("token", token);
-
-        // Store user information
-        if (userData) {
-          localStorage.setItem("user", JSON.stringify(userData));
-          setUser(userData);
-        }
-
-        setIsAuthenticated(true);
-        console.log("Login successful");
+      if (!token) {
+        throw new Error("Authentication token was not received");
       }
+
+      localStorage.setItem("token", token);
+
+      if (userData) {
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
+      }
+
+      setIsAuthenticated(true);
     } catch (error) {
       console.error(
         "Login failed:",
@@ -76,154 +69,259 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
     setIsAuthenticated(false);
     setUser(null);
     setSelectedDocumentId(null);
+
     queryClient.clear();
   };
 
+  const selectedDocument = documents.find(
+    (document) => document._id === selectedDocumentId
+  );
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app">
+        <main className="auth-page">
+          <div className="auth-card">
+            <div className="brand-mark">✦</div>
+
+            <h1>DocuMind AI</h1>
+
+            <p className="auth-subtitle">
+              Intelligent Document Q&A with RAG
+            </p>
+
+            <div className="auth-divider" />
+
+            <h2>Ask your documents anything</h2>
+
+            <p className="auth-description">
+              Upload your PDFs, let AI understand them, and get
+              accurate answers with relevant sources.
+            </p>
+
+            <div className="google-login">
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={handleGoogleLoginError}
+              />
+            </div>
+
+            <p className="auth-footer">
+              Secure authentication powered by Google
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "24px 16px" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "28px" }}>DocuMind AI</h1>
-          <p style={{ margin: "4px 0 0", color: "#6b7280" }}>Intelligent Document Q&A with RAG</p>
+    <div className="app">
+      <header className="navbar">
+        <div className="navbar-brand">
+          <div className="navbar-logo">✦</div>
+
+          <div>
+            <h1>DocuMind AI</h1>
+            <span>Intelligent Document Q&A</span>
+          </div>
         </div>
 
-        {isAuthenticated && (
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {user?.profilePicture && (
-              <img
-                src={user.profilePicture}
-                alt={user.name || "User"}
-                style={{ width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover" }}
-              />
-            )}
-            {user?.name && (
-              <span style={{ fontWeight: 600, fontSize: "14px" }}>{user.name}</span>
-            )}
-            <button
-              onClick={handleLogout}
-              style={{
-                background: "#f3f4f6",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                padding: "6px 14px",
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#374151",
-              }}
-            >
-              Log out
-            </button>
+        <div className="navbar-user">
+          {user?.profilePicture ? (
+            <img
+              src={user.profilePicture}
+              alt={user.name || "User"}
+              className="user-avatar"
+            />
+          ) : (
+            <div className="user-avatar-placeholder">
+              {user?.name?.charAt(0)?.toUpperCase() || "U"}
+            </div>
+          )}
+
+          <div className="user-info">
+            <strong>{user?.name || "User"}</strong>
+            <span>{user?.email}</span>
           </div>
-        )}
+
+          <button
+            className="logout-button"
+            onClick={handleLogout}
+          >
+            Log out
+          </button>
+        </div>
       </header>
 
-      {/* Google Authentication */}
-      {!isAuthenticated && (
-        <div style={{ background: "white", padding: "40px 24px", borderRadius: "16px", border: "1px solid #e5e7eb", textAlign: "center", maxWidth: "450px", margin: "60px auto" }}>
-          <h2 style={{ marginTop: 0, marginBottom: "12px" }}>Login to continue</h2>
-          <p style={{ color: "#6b7280", marginBottom: "24px", fontSize: "14px" }}>Sign in with your Google account to access and ask questions to your documents.</p>
+      <main className="dashboard">
+        <section className="welcome-section">
+          <div>
+            <p className="eyebrow">YOUR AI WORKSPACE</p>
 
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <GoogleLogin
-              onSuccess={handleGoogleLogin}
-              onError={handleGoogleLoginError}
-            />
+            <h2>
+              Welcome back
+              {user?.name ? `, ${user.name.split(" ")[0]}` : ""} 👋
+            </h2>
+
+            <p>
+              Upload a document and start asking intelligent
+              questions about it.
+            </p>
           </div>
-        </div>
-      )}
 
-      {/* Application */}
-      {isAuthenticated && (
-        <>
-          <DocumentUpload />
+          <div className="document-count">
+            <strong>{documents.length}</strong>
+            <span>
+              {documents.length === 1
+                ? "Document"
+                : "Documents"}
+            </span>
+          </div>
+        </section>
 
-          <hr style={{ margin: "32px 0", borderColor: "#e5e7eb" }} />
+        <DocumentUpload />
 
-          <h2>Your Documents</h2>
+        <section className="documents-section">
+          <div className="documents-header">
+            <div>
+              <p className="eyebrow">YOUR LIBRARY</p>
+              <h2>Your Documents</h2>
+            </div>
+
+            <span className="document-total">
+              {documents.length}{" "}
+              {documents.length === 1
+                ? "document"
+                : "documents"}
+            </span>
+          </div>
 
           {isLoading && (
-            <p>Loading documents...</p>
+            <div className="documents-state">
+              <div className="documents-spinner" />
+              <p>Loading your documents...</p>
+            </div>
           )}
 
           {isError && (
-            <p style={{ color: "#dc2626" }}>Failed to load documents.</p>
+            <div className="documents-state error-state">
+              <div className="state-icon">!</div>
+              <h3>Unable to load documents</h3>
+              <p>
+                Something went wrong while fetching your
+                documents.
+              </p>
+            </div>
           )}
 
           {!isLoading &&
+            !isError &&
             documents.length === 0 && (
-              <p style={{ color: "#6b7280" }}>No documents uploaded yet.</p>
+              <div className="documents-state">
+                <div className="state-icon">PDF</div>
+                <h3>Your library is empty</h3>
+                <p>
+                  Upload your first PDF above to start using
+                  DocuMind AI.
+                </p>
+              </div>
             )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", margin: "16px 0" }}>
-            {documents.map((document) => (
-              <div
-                key={document._id}
-                style={{
-                  background: "white",
-                  padding: "16px",
-                  borderRadius: "12px",
-                  border: "1px solid #e5e7eb",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-                }}
-              >
-                <h3 style={{ margin: "0 0 8px", fontSize: "16px", wordBreak: "break-all" }}>{document.fileName}</h3>
+          {!isLoading &&
+            !isError &&
+            documents.length > 0 && (
+              <div className="document-grid">
+                {documents.map((document) => (
+                  <div
+                    className={`document-card ${
+                      selectedDocumentId === document._id
+                        ? "selected"
+                        : ""
+                    }`}
+                    key={document._id}
+                  >
+                    <div className="document-card-top">
+                      <div className="document-icon">
+                        PDF
+                      </div>
 
-                <p style={{ margin: "4px 0", fontSize: "13px", color: "#4b5563" }}>
-                  Status:{" "}
-                  <strong style={{ textTransform: "capitalize" }}>{document.status}</strong>
-                </p>
+                      <span
+                        className={`status-badge ${document.status}`}
+                      >
+                        <span />
+                        {document.status === "ready"
+                          ? "Ready"
+                          : document.status === "processing"
+                          ? "Processing"
+                          : document.status}
+                      </span>
+                    </div>
 
-                <p style={{ margin: "4px 0 12px", fontSize: "13px", color: "#6b7280" }}>
-                  Size:{" "}
-                  {(
-                    document.fileSize /
-                    1024 /
-                    1024
-                  ).toFixed(2)}{" "}
-                  MB
-                </p>
+                    <div className="document-info">
+                      <h3 title={document.fileName}>
+                        {document.fileName}
+                      </h3>
 
-                <button
-                  disabled={document.status !== "ready"}
-                  onClick={() => {
-                    setSelectedDocumentId(
-                      document._id
-                    );
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    background: document.status === "ready" ? "#111827" : "#e5e7eb",
-                    color: document.status === "ready" ? "white" : "#9ca3af",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontWeight: 600,
-                    fontSize: "13px"
-                  }}
-                >
-                  {document.status === "ready"
-                    ? "Ask Questions"
-                    : "Processing..."}
-                </button>
+                      <p>
+                        {(document.fileSize / 1024 / 1024).toFixed(
+                          2
+                        )}{" "}
+                        MB
+                      </p>
+                    </div>
+
+                    <button
+                      className="ask-document-button"
+                      disabled={document.status !== "ready"}
+                      onClick={() =>
+                        setSelectedDocumentId(document._id)
+                      }
+                    >
+                      {document.status === "ready"
+                        ? "Ask Questions →"
+                        : "Processing..."}
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+        </section>
 
-          <hr style={{ margin: "32px 0", borderColor: "#e5e7eb" }} />
+        {selectedDocumentId && (
+          <section className="chat-section-wrapper">
+            <div className="active-document">
+              <div>
+                <span>ASKING ABOUT</span>
+                <strong>
+                  {selectedDocument?.fileName ||
+                    "Selected document"}
+                </strong>
+              </div>
 
-          {selectedDocumentId && (
-            <Chat
-              documentId={selectedDocumentId}
-            />
-          )}
-        </>
-      )}
+              <button
+                onClick={() => setSelectedDocumentId(null)}
+              >
+                Close
+              </button>
+            </div>
+
+            <Chat documentId={selectedDocumentId} />
+          </section>
+        )}
+      </main>
+
+      <footer className="app-footer">
+        <span>DocuMind AI</span>
+        <span>•</span>
+        <span>Powered by RAG</span>
+      </footer>
     </div>
   );
 }
 
 export default App;
-
