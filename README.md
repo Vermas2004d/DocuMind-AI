@@ -2,162 +2,178 @@
 
 > **Intelligent Document Q&A with RAG**
 
-DocuMind AI is a production-style MERN application that lets authenticated users upload PDF documents and ask natural-language questions about their content. It combines **RAG (Retrieval-Augmented Generation)** with Gemini, LangChain and Qdrant, while using MongoDB for application data, Redis for caching/rate limiting, and AWS S3 for private document storage.
-
-## 🚀 Live Architecture
-
-```text
-Internet
-   |
-   +--> Vercel
-   |     React + TanStack Query
-   |
-   | HTTPS / REST
-   v
-Render
-Node.js + Express
-   |
-   +--> MongoDB Atlas  -> users, document metadata/status, chat history
-   +--> Redis Cloud    -> RAG cache + rate limiting
-   +--> AWS S3         -> private original PDFs
-   +--> LangChain RAG
-          +--> PDF loader
-          +--> text splitting
-          +--> Gemini embeddings
-          +--> Qdrant Cloud -> vector search
-          +--> Gemini LLM   -> grounded answers
-```
-
-The backend is the orchestrator. MongoDB and Qdrant do not communicate directly.
+DocuMind AI is a web application that lets users upload PDF documents and ask questions about their content using AI. The application uses Retrieval-Augmented Generation (RAG) to retrieve relevant information from uploaded documents before generating an answer.
 
 ## ✨ Features
 
-- Google authentication
-- Application JWT authentication and protected APIs
-- PDF upload with a 10 MB limit
-- Private AWS S3 document storage
-- PDF ingestion and chunking
-- Gemini embeddings
-- Qdrant vector search
-- RAG-based document Q&A
-- Source/page metadata in answers
-- Redis response caching
-- Redis per-user rate limiting
-- Persistent chat history in MongoDB
-- TanStack Query for server-state management
-- Production deployment with Vercel + Render + managed data services
-- Responsive frontend
+- 🔐 Google Sign-In
+- 📄 PDF document upload
+- ☁️ Secure document storage with AWS S3
+- 🤖 AI-powered document Q&A
+- 🔎 Semantic search using vector embeddings
+- 📚 Source references with page information
+- 💬 Persistent chat history
+- ⚡ Fast responses with Redis caching
+- 🛡️ API rate limiting
+- 📱 Responsive user interface
 
-## 🧠 RAG Flow
+## 🏗️ Technology Stack
+
+| Technology | Used for |
+|---|---|
+| React | User interface |
+| TanStack Query | Server-state management |
+| Node.js | Backend runtime |
+| Express.js | REST API |
+| MongoDB Atlas | Users, document metadata and chat history |
+| AWS S3 | PDF storage |
+| Redis | Caching and rate limiting |
+| LangChain | RAG pipeline |
+| Gemini | Embeddings and AI responses |
+| Qdrant | Vector storage and similarity search |
+| Vercel | Frontend deployment |
+| Render | Backend deployment |
+
+## 🔄 How It Works
+
+### Document Upload
+
+```text
+User
+  ↓
+Upload PDF
+  ↓
+React Frontend
+  ↓
+Express API
+  ↓
+AWS S3
+  ↓
+PDF Processing
+  ↓
+Text Splitting
+  ↓
+Gemini Embeddings
+  ↓
+Qdrant Vector Database
+```
+
+The original PDF is stored in AWS S3 while its metadata is stored in MongoDB.
+
+### Asking a Question
+
+```text
+User Question
+     ↓
+React
+     ↓
+Express API
+     ↓
+Authentication
+     ↓
+Redis Cache Check
+     ↓
+Qdrant Similarity Search
+     ↓
+Relevant Document Chunks
+     ↓
+Gemini
+     ↓
+AI Answer + Sources
+     ↓
+React UI
+```
+
+If the same question has already been answered for the same user and document, Redis can return the cached response instead of running the complete RAG pipeline again.
+
+## 🧠 RAG Pipeline
+
+DocuMind AI uses Retrieval-Augmented Generation to ground AI responses in the uploaded document.
 
 ```text
 PDF
-  ↓
-PDF loader
-  ↓
-Recursive text splitter
-  ↓
-Chunks + document/user/page metadata
-  ↓
-Gemini embeddings
-  ↓
-Qdrant
+ ↓
+Extract Text
+ ↓
+Split into Chunks
+ ↓
+Generate Embeddings
+ ↓
+Store Vectors in Qdrant
 ```
 
-Question flow:
+When a user asks a question:
 
 ```text
-User question
-  ↓
-JWT authentication
-  ↓
-Redis rate limit
-  ↓
-MongoDB document ownership check
-  ↓
-Redis cache lookup
-  ├── HIT  → cached answer
-  └── MISS
-        ↓
-     Qdrant similarity search
-     filtered by userId + documentId
-        ↓
-     Top relevant chunks
-        ↓
-     Grounded prompt
-        ↓
-     Gemini LLM
-        ↓
-     Answer + sources
-        ↓
-     Redis cache + MongoDB chat history
-        ↓
-     React UI
+Question
+ ↓
+Question Embedding
+ ↓
+Qdrant Similarity Search
+ ↓
+Relevant Chunks
+ ↓
+Gemini LLM
+ ↓
+Grounded Answer
 ```
 
-## 🔐 Authentication Flow
+The retrieved chunks contain metadata such as the document ID, file name and page number, allowing the application to display sources alongside the answer.
+
+## 🔐 Authentication
+
+DocuMind AI uses Google Sign-In and application JWT authentication.
 
 ```text
-React
-  ↓
-Google Identity Services
-  ↓
-Google ID token
-  ↓
-POST /api/auth/google
-  ↓
-Backend verifies token
-  ↓
-Find/create MongoDB user
-  ↓
-Backend signs application JWT
-  ↓
-React stores JWT
-  ↓
-Authorization: Bearer <JWT>
+User
+ ↓
+Google Sign-In
+ ↓
+Google ID Token
+ ↓
+Backend Verification
+ ↓
+JWT Generated
+ ↓
+Protected API Requests
 ```
 
-The backend never trusts a browser-supplied user ID for protected resources. It derives the user identity from the verified JWT.
+The JWT is used to authenticate requests to protected document and chat APIs.
 
-## ⚡ Redis
+## ⚡ Performance
 
-### Cache
+Redis is used in two important areas:
 
-Cache key:
+### Response Caching
+
+Frequently repeated questions can be served from Redis without running another vector search and LLM request.
+
+### Rate Limiting
+
+The API uses Redis to limit repeated requests and help protect the backend from excessive usage.
+
+## ☁️ Deployment Architecture
 
 ```text
-rag:<userId>:<documentId>:<questionHash>
+                 Internet
+                    │
+          ┌─────────┴─────────┐
+          │                   │
+       Vercel              Render
+     React App          Node + Express
+                              │
+             ┌────────────────┼────────────────┐
+             │                │                │
+        MongoDB Atlas     Redis Cloud      Qdrant Cloud
+             │
+          AWS S3
+             │
+        Gemini APIs
 ```
 
-The question is normalized and hashed with SHA-256. Cached RAG results have a TTL.
+The frontend is hosted on Vercel and the backend is hosted on Render. Managed cloud services are used for the application's database, cache, vector database and document storage.
 
-### Rate limiting
-
-The current chat policy is an example:
-
-```text
-20 requests / minute / authenticated user
-```
-
-The limiter uses Redis `INCR` and `EXPIRE`.
-
-## 🗃️ Data Responsibilities
-
-| Technology | Responsibility |
-|---|---|
-| React | UI |
-| TanStack Query | Server-state management |
-| Express | REST API/orchestration |
-| MongoDB Atlas | Users, document metadata, chat history |
-| Redis Cloud | Cache + rate limiting |
-| AWS S3 | Private PDFs |
-| LangChain | RAG orchestration |
-| Gemini | Embeddings + LLM |
-| Qdrant | Vector storage/search |
-| Vercel | Frontend hosting |
-| Render | Backend hosting |
-
-## 📁 Project Structure
+## 📂 Project Structure
 
 ```text
 DocuMind-AI/
@@ -168,8 +184,8 @@ DocuMind-AI/
 │   │   ├── lib/
 │   │   ├── App.jsx
 │   │   └── main.jsx
-│   ├── .env
 │   └── .gitignore
+│
 ├── server/
 │   ├── src/
 │   │   ├── config/
@@ -179,80 +195,22 @@ DocuMind-AI/
 │   │   ├── routes/
 │   │   ├── services/
 │   │   └── app.js
-│   ├── .env
 │   └── .gitignore
-└── docker-compose.yml
+│
+├── docker-compose.yml
+├── README.md
+└── DocuMind_AI_Architecture_and_Flows.pdf
 ```
 
-## 🔌 API
+## 📖 Complete Architecture & Flow Documentation
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| POST | `/api/auth/google` | Google login + JWT |
-| GET | `/api/documents` | User documents |
-| POST | `/api/documents/upload` | Upload + ingest PDF |
-| POST | `/api/chat/ask` | RAG question |
-| GET | `/api/chat/:documentId` | Chat history |
-| GET | `/api/health` | Health check |
+For the complete system architecture, RAG pipeline, authentication flow, document upload flow, Redis caching, rate limiting, chat history, API flow and deployment architecture:
 
-## 🛡️ Security
+### 👉 [Download the Complete Architecture & Flows PDF](./DocuMind_AI_Architecture_and_Flows.pdf)
 
-- JWT protected APIs
-- User/document ownership checks
-- Qdrant filters by `userId` and `documentId`
-- Private S3 bucket
-- Backend-only secrets
-- Redis rate limiting
-- Production CORS restriction
-- PDF MIME-type validation
-- 10 MB upload limit
-- Qdrant payload indexes for filtered retrieval
+You can also open the PDF directly from the repository.
 
-## 🌍 Deployment
-
-```text
-Vercel
-  ↓ HTTPS
-Render
-  ├── MongoDB Atlas
-  ├── Redis Cloud
-  ├── Qdrant Cloud
-  └── AWS S3
-       |
-       +--> Gemini APIs
-```
-
-Local Docker Compose is used for development support services. Production uses managed services.
-
-## 🧪 Production Test Checklist
-
-- [ ] Google login
-- [ ] JWT-protected API
-- [ ] PDF upload
-- [ ] S3 storage
-- [ ] PDF ingestion
-- [ ] Qdrant indexing
-- [ ] RAG question
-- [ ] Source/page display
-- [ ] Redis cache hit on repeated question
-- [ ] Redis rate limiting
-- [ ] Chat history persistence
-- [ ] User/document isolation
-- [ ] Production CORS
-- [ ] Mobile UI
-- [ ] Render/Vercel deployment
-
-## 💬 Interview Explanation
-
-> DocuMind AI is a production-style MERN application for document question answering. Google Identity Services handles authentication, the backend verifies the Google ID token and issues a JWT. PDFs are stored privately in S3, metadata and chat history are stored in MongoDB, and LangChain runs the RAG pipeline. During ingestion, PDFs are split into chunks, enriched with user/document/page metadata, embedded with Gemini and stored in Qdrant. For each question, the backend verifies document ownership, checks Redis for a cached response, performs filtered vector search in Qdrant, and sends the retrieved context to Gemini to generate a grounded answer with sources. Redis also provides per-user rate limiting. The frontend is deployed on Vercel and the backend on Render.
-
-## 📄 Architecture & Flow Guide
-
-The complete architecture, request flows, RAG pipeline, authentication flow, Redis cache/rate-limit flow, deployment architecture and interview explanation are documented here:
-
-**[DocuMind AI — Complete Architecture, Data Flow & Interview Guide](./DocuMind_AI_Architecture_and_Flows.pdf)**
-
-## 🧑‍💻 Local Development
+## 🚀 Local Development
 
 ### Backend
 
@@ -270,22 +228,16 @@ npm install
 npm run dev
 ```
 
-Backend health endpoint:
+Create the required environment variables before running the application.
 
-```text
-GET /api/health
-```
-
-## 🔑 Environment Variables
-
-### Client
+### Client environment
 
 ```env
 VITE_API_URL=
 VITE_GOOGLE_CLIENT_ID=
 ```
 
-### Server
+### Server environment
 
 ```env
 PORT=
@@ -303,20 +255,19 @@ REDIS_URL=
 CLIENT_URL=
 ```
 
-Never commit `.env` files or backend secrets.
+**Never commit `.env` files or secret credentials to GitHub.**
 
-## 📌 Git Checkpoints
+## 📌 API Endpoints
 
-Confirmed development checkpoints include:
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/google` | Google authentication |
+| `GET` | `/api/documents` | Get user's documents |
+| `POST` | `/api/documents/upload` | Upload and process a PDF |
+| `POST` | `/api/chat/ask` | Ask a question about a document |
+| `GET` | `/api/chat/:documentId` | Get chat history |
+| `GET` | `/api/health` | Backend health check |
 
-```text
-00b5dab  secure document rag retrieval
-a1fa122  add jwt authentication
-52227f5  add persistent chat history
-de45301  preserve pdf page metadata in rag sources
-d418ff0  add redis caching for rag responses
-```
+## 📄 License
 
----
-
-Built as a portfolio project demonstrating **MERN + RAG + authentication + vector search + caching + rate limiting + cloud deployment**.
+This project is intended as a personal software project and demonstration application.
